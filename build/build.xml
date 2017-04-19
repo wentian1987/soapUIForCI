@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="SoapUIForCI" basedir="..">
+	<!-- 版本构建时间 -->
+	<tstamp>
+		<format property="version.date" pattern="yyyyMMdd_HHmmss" />
+	</tstamp>
+
+
+	<property environment="env" />
+	<!-- native2ascii 这一句是处理proeprites文件中有汉字的情况，中间产生的build_compile.ascii.properties文件注意不要签入TFS -->
+	<native2ascii src="build" dest="build" includes="build_compile.properties"
+		ext=".ascii.properties" />
+
+	<!-- 外部包引用 -->
+	<path id="classpath">
+		<pathelement location="${classes.dir}" />
+		<fileset dir="${classpath.lib}">
+			<patternset>
+				<include name="*.jar" />
+			</patternset>
+		</fileset>
+		<fileset dir="${compile-lib1.dir}">
+			<patternset>
+				<include name="*.jar" />
+			</patternset>
+		</fileset>
+		<fileset dir="${compile-lib2.dir}">
+			<patternset>
+				<include name="*.jar" />
+			</patternset>
+		</fileset>
+		<fileset dir="${compile-lib3.dir}">
+			<patternset>
+				<include name="*.jar" />
+			</patternset>
+		</fileset>
+		<fileset dir="${compile-lib4.dir}">
+			<patternset>
+				<include name="*.jar" />
+			</patternset>
+		</fileset>
+	</path>
+
+	<!--清理目标位置 -->
+	<target name="clean">
+		<delete dir="${classes.dir}" />
+		<delete dir="${target.dir}" />
+		<delete dir="${junit.target.dir}" />
+	</target>
+	<!--自动化流程开始 -->
+	<!--初始化 并拷入需要打包进jar包的非class编译文件 -->
+	<target name="init" depends="clean">
+		<mkdir dir="${target.dir}" />
+		<mkdir dir="${classes.dir}" />
+		<mkdir dir="${junit.target.dir}" />
+		<copy todir="${classes.dir}" filtering="false">
+			<fileset dir="${classpath.resources}">
+				<!--对于classpath.java和classpath.resources在同一目录下的情况，拷贝配置文件不含java文件 -->
+				<patternset>
+					<exclude name="**/*.java" />
+				</patternset>
+			</fileset>
+		</copy>
+		<copy todir="${classes.dir}" filtering="false">
+			<fileset dir="${classpath.java}">
+				<!--对于classpath.java和classpath.resources在同一目录下的情况，拷贝配置文件不含java文件 -->
+				<patternset>
+					<exclude name="**/*.java" />
+				</patternset>
+			</fileset>
+		</copy>
+	</target>
+
+	<!-- 编译 -->
+	<target name="compile" depends="init">
+		<javac nowarn="on" target="${compile.level}" source="${compile.level}" srcdir="${classpath.java}" destdir="${classes.dir}" classpathref="classpath" fork="true" debug="true" includeAntRuntime="false" memoryInitialSize="256m" memoryMaximumSize="512m" encoding="${compile.encoding}" />
+		<javac nowarn="on" target="${compile.level}" source="${compile.level}" srcdir="${junit.src.dir}" destdir="${junit.target.dir}" classpathref="classpath" fork="true" debug="true" includeAntRuntime="false" memoryInitialSize="256m" memoryMaximumSize="512m" encoding="${compile.encoding}" />
+	</target>
+	
+	<!-- 运行JUnit Test Case -->
+	<target name="testJUnit" >
+		<!-- Run your unit tests, adding the JaCoCo agent -->
+		<!--jacoco:coverage destfile="${junit.target.dir}/jacoco.exec" xmlns:jacoco="antlib:org.jacoco.ant"-->
+  		<junit printsummary="yes" fork="yes" failureProperty="test.failed">
+  		<classpath>
+  			<pathelement location="${junit.target.dir}"/>
+  			<pathelement path="${web-inf.dir}/classes"/>
+  		</classpath>
+  		<formatter type="xml" />
+  		<batchtest todir="${junit.target.dir}">
+  		  <fileset dir="${junit.src.dir}">
+  		    <include name="**/*Test.java" />
+  		  </fileset>
+  		</batchtest>
+  		</junit>
+		<!--/jacoco:coverage-->
+	</target>
+
+	<!-- 打包 -->
+	<target name="pack" description="打应用包">
+		<if>
+			<or>
+				<equals arg1="${update.type}" arg2="full" trim="true" casesensitive="false" />
+			</or>
+			<then>
+				<echo>打全量包${full.package.name}</echo>
+				<jar destfile="${target.dir}/${full.package.name}" basedir="${webapp.dir}" excludesfile="${package.excludesfile}" />
+			</then>
+			<else>
+				<echo>打增量包${append.package.name}</echo>
+				<jar destfile="${target.dir}/${append.package.name}" basedir="${webapp.dir}" includesfile="${newversion.appendfile}" />
+			</else>
+		</if>
+	</target>
+
+</project>

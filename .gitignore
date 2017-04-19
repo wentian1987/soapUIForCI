@@ -1,0 +1,6 @@
+/target/
+*.log
+*.out
+*.jar
+.settings/
+build/classes
